@@ -7,13 +7,17 @@ dotenv.config();
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
 async function getSheetsClient() {
+  const rawKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY!;
+  const jsonCredentials = JSON.parse(Buffer.from(rawKey, 'base64').toString('utf8'));
+
   const auth = new google.auth.GoogleAuth({
-    keyFile: 'google-service-account.json',
+    credentials: jsonCredentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
   });
+
   const authClient = await auth.getClient();
   google.options({ auth: authClient });
-  return google.sheets('v4');
+  return google.sheets({ version: 'v4' });
 }
 
 async function getColumnData(sheetName: string, spreadsheetId: string): Promise<string[]> {
