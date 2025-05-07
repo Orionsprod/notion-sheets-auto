@@ -1,0 +1,36 @@
+name: Sync Sheets to Notion
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Decode and write service account key
+        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" | base64 -d > google-service-account.json
+
+      - name: Run sync
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_CAMPAIGN_DB: ${{ secrets.NOTION_CAMPAIGN_DB }}
+          NOTION_ADSET_DB: ${{ secrets.NOTION_ADSET_DB }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: node dist/index.js
