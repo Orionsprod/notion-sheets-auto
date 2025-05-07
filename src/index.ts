@@ -12,7 +12,8 @@ async function getSheetsClient() {
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
   });
   const authClient = await auth.getClient();
-  return google.sheets({ version: 'v4', auth: authClient });
+  google.options({ auth: authClient });
+  return google.sheets('v4');
 }
 
 async function getColumnData(sheetName: string, spreadsheetId: string): Promise<string[]> {
