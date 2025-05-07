@@ -24,13 +24,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Decode and write service account key
-        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" | base64 -d > google-service-account.json
-
       - name: Run sync
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_CAMPAIGN_DB: ${{ secrets.NOTION_CAMPAIGN_DB }}
           NOTION_ADSET_DB: ${{ secrets.NOTION_ADSET_DB }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
         run: node dist/index.js
