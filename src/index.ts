@@ -1,7 +1,6 @@
 import { google } from 'googleapis';
 import { Client } from '@notionhq/client';
 import dotenv from 'dotenv';
-import { OAuth2Client } from 'google-auth-library';
 dotenv.config();
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
@@ -15,16 +14,14 @@ async function getSheetsClient() {
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
   });
   
-  // Create the sheets client using the auth object
-  const sheets = google.sheets('v4');
+  // Get the auth client and use type assertion (as any) to bypass TypeScript checking
+  const authClient = await auth.getClient();
   
-  // Set auth client for sheets instance
-  sheets.context._options = {
-    ...sheets.context._options,
-    auth: await auth.getClient()
-  };
-  
-  return sheets;
+  // Create sheets API instance with the auth client, using type assertion
+  return google.sheets({
+    version: 'v4',
+    auth: authClient as any
+  });
 }
 
 async function getColumnData(sheetName: string, spreadsheetId: string): Promise<string[]> {
