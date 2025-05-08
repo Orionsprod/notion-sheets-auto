@@ -53,20 +53,43 @@ async function createNotionPages(values: string[], databaseId: string, prop: str
   }
 }
 
-async function addRelations(sheetName: string, spreadsheetId: string, range: string, parentMap: Map<string, string>, childMap: Map<string, string>, parentDBId: string, parentProp: string, childPropId: string) {
-  const rows = await getColumnData(sheetName, spreadsheetId, range);
-  for (const [childName, parentName] of rows) {
-    const parentId = parentMap.get(parentName);
-    const childId = childMap.get(childName);
-    if (parentId && childId) {
-      await notion.pages.update({
-        page_id: parentId,
-        properties: {
-          [childPropId]: { relation: [{ id: childId }] }
-        }
-      });
-      console.log(`Linked ${childName} to ${parentName}`);
-    }
+async function createAdsetPerCampaign(sheetName: string, spreadsheetId: string, adsetDBId: string, campaignDBId: string) {
+  const rows = await getColumnData(sheetName, spreadsheetId, 'A:B');
+  const campaignMap = await getNotionEntriesMap(campaignDBId, 'Name');
+
+  for (const [adsetName, campaignName] of rows) {
+    if (!adsetName || !campaignName) continue;
+    const campaignId = campaignMap.get(campaignName);
+    if (!campaignId) continue;
+
+    await notion.pages.create({
+      parent: { database_id: adsetDBId },
+      properties: {
+        'Name': { title: [{ text: { content: adsetName } }] },
+        'Campaign': { relation: [{ id: campaignId }] },
+      }
+    });
+    console.log(`Created adset '${adsetName}' linked to campaign '${campaignName}'`);
+  }
+}
+
+async function relateCampaignsToAccounts(sheetName: string, spreadsheetId: string, campaignDBId: string, accountDBId: string) {
+  const rows = await getColumnData(sheetName, spreadsheetId, 'A:B');
+  const campaignMap = await getNotionEntriesMap(campaignDBId, 'Name');
+  const accountMap = await getNotionEntriesMap(accountDBId, 'Name');
+
+  for (const [campaignName, accountName] of rows) {
+    const campaignId = campaignMap.get(campaignName);
+    const accountId = accountMap.get(accountName);
+    if (!campaignId || !accountId) continue;
+
+    await notion.pages.update({
+      page_id: campaignId,
+      properties: {
+        'Account': { relation: [{ id: accountId }] },
+      }
+    });
+    console.log(`Linked campaign '${campaignName}' to account '${accountName}'`);
   }
 }
 
@@ -78,38 +101,25 @@ async function main() {
   const campaignMap = await getNotionEntriesMap(process.env.NOTION_CAMPAIGN_DB!, 'Name');
   await createNotionPages(campaignValues, process.env.NOTION_CAMPAIGN_DB!, 'Name', campaignMap);
 
-  // Sync Adsets
-  const adsetValues = (await getColumnData('ad-account/insights/unique_adsets', spreadsheetId, 'A:A')).flat();
-  const adsetMap = await getNotionEntriesMap(process.env.NOTION_ADSET_DB!, 'Name');
-  await createNotionPages(adsetValues, process.env.NOTION_ADSET_DB!, 'Name', adsetMap);
-
   // Sync Accounts
   const accountValues = (await getColumnData('ad-account_name', spreadsheetId, 'D:D')).flat();
   const accountMap = await getNotionEntriesMap(process.env.NOTION_ACCOUNT_DB!, 'Name');
   await createNotionPages(accountValues, process.env.NOTION_ACCOUNT_DB!, 'Name', accountMap);
 
-  // Relate Adsets to Campaigns
-  await addRelations(
-    'ad-account/insights/unique_campaigs_adsets',
-    spreadsheetId,
-    'A:B',
-    campaignMap,
-    adsetMap,
-    process.env.NOTION_CAMPAIGN_DB!,
-    'Name',
-    'Adsets'
-  );
-
   // Relate Campaigns to Accounts
-  await addRelations(
+  await relateCampaignsToAccounts(
     'ad-account_name',
     spreadsheetId,
-    'A:B',
-    campaignMap,
-    accountMap,
     process.env.NOTION_CAMPAIGN_DB!,
-    'Name',
-    'Account'
+    process.env.NOTION_ACCOUNT_DB!
+  );
+
+  // Create Adsets with duplicates per campaign
+  await createAdsetPerCampaign(
+    'ad-account/insights/unique_campaigs_adsets',
+    spreadsheetId,
+    process.env.NOTION_ADSET_DB!,
+    process.env.NOTION_CAMPAIGN_DB!
   );
 }
 
