@@ -113,13 +113,21 @@ async function relateCampaignsToAccounts(sheetName: string, spreadsheetId: strin
     });
     console.log(`Linked campaign '${campaignName}' to account '${accountName}'`);
 
-    await notion.pages.update({
-      page_id: accountId,
-      properties: {
-        'Campaigns': { relation: [{ id: campaignId }] },
-      }
-    });
-    console.log(`Linked account '${accountName}' to campaign '${campaignName}'`);
+    const accountPage = await notion.pages.retrieve({ page_id: accountId }) as any;
+    const currentCampaigns = accountPage.properties['Campaigns']?.relation?.map((r: any) => r.id) || [];
+
+    if (!currentCampaigns.includes(campaignId)) {
+      const updatedCampaigns = [...currentCampaigns, campaignId];
+      await notion.pages.update({
+        page_id: accountId,
+        properties: {
+          'Campaigns': {
+            relation: updatedCampaigns.map(id => ({ id }))
+          }
+        }
+      });
+      console.log(`Appended campaign '${campaignName}' to account '${accountName}'`);
+    }
   }
 }
 
