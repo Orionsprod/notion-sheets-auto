@@ -27,6 +27,7 @@ jobs:
       - name: Run sync
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_ACCOUNT_DB: ${{ secrets.NOTION_ACCOUNT_DB }}
           NOTION_CAMPAIGN_DB: ${{ secrets.NOTION_CAMPAIGN_DB }}
           NOTION_ADSET_DB: ${{ secrets.NOTION_ADSET_DB }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
