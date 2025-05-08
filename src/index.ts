@@ -106,7 +106,7 @@ async function relateCampaignsToAccounts(sheetName: string, spreadsheetId: strin
 
     // Link account -> campaigns (append)
     const accountPage = await notion.pages.retrieve({ page_id: accountId });
-    if (!('properties' in accountPage) || accountPage.object !== 'page') continue;
+    if (!isFullPage(accountPage)) continue;
     const campaignProp = accountPage.properties['Campaigns'];
     const currentCampaigns = campaignProp && campaignProp.type === 'relation'
       ? campaignProp.relation.map((r: any) => r.id)
@@ -147,4 +147,10 @@ async function main() {
   await relateCampaignsToAccounts('ad-account/insights/unique_campaigns_accounts', spreadsheetId, process.env.NOTION_CAMPAIGN_DB!, process.env.NOTION_ACCOUNT_DB!);
 }
 
+
+function isFullPage(response: any): response is import('@notionhq/client/build/src/api-endpoints').PageObjectResponse {
+  return response.object === 'page' && 'properties' in response;
+}
+
 main().catch(console.error);
+
