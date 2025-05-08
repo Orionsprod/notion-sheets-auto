@@ -53,14 +53,36 @@ async function createNotionPages(values: string[], databaseId: string, prop: str
   }
 }
 
+async function getAdsetCampaignPairsFromNotion(adsetDBId: string): Promise<Set<string>> {
+  const pairs = new Set<string>();
+  let cursor = undefined;
+  do {
+    const response = await notion.databases.query({ database_id: adsetDBId, start_cursor: cursor });
+    response.results.forEach((page: any) => {
+      const name = page.properties['Name']?.title?.[0]?.plain_text;
+      const campaignIds = page.properties['Campaign']?.relation?.map((rel: any) => rel.id) || [];
+      campaignIds.forEach(campaignId => {
+        if (name && campaignId) {
+          pairs.add(`${name}:::${campaignId}`);
+        }
+      });
+    });
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+  return pairs;
+}
+
 async function createAdsetPerCampaign(sheetName: string, spreadsheetId: string, adsetDBId: string, campaignDBId: string) {
   const rows = await getColumnData(sheetName, spreadsheetId, 'A:B');
   const campaignMap = await getNotionEntriesMap(campaignDBId, 'Name');
+  const existingPairs = await getAdsetCampaignPairsFromNotion(adsetDBId);
 
   for (const [adsetName, campaignName] of rows) {
     if (!adsetName || !campaignName) continue;
     const campaignId = campaignMap.get(campaignName);
     if (!campaignId) continue;
+    const pairKey = `${adsetName}:::${campaignId}`;
+    if (existingPairs.has(pairKey)) continue;
 
     await notion.pages.create({
       parent: { database_id: adsetDBId },
@@ -114,15 +136,15 @@ async function main() {
   const accountMap = await getNotionEntriesMap(process.env.NOTION_ACCOUNT_DB!, 'Name');
   await createNotionPages(accountValues, process.env.NOTION_ACCOUNT_DB!, 'Name', accountMap);
 
-  // Relate Campaigns to Accounts (bidirectional)
+  // Relate Campaigns to Accounts (bidirectional), using correct sheet
   await relateCampaignsToAccounts(
-    'ad-account_name',
+    'ad-account/insights/unique_campaigns_accounts',
     spreadsheetId,
     process.env.NOTION_CAMPAIGN_DB!,
     process.env.NOTION_ACCOUNT_DB!
   );
 
-  // Create Adsets with duplicates per campaign
+  // Create Adsets with duplicates per campaign only if not already linked
   await createAdsetPerCampaign(
     'ad-account/insights/unique_campaigs_adsets',
     spreadsheetId,
