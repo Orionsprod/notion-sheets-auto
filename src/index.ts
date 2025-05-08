@@ -60,8 +60,8 @@ async function getAdsetCampaignPairsFromNotion(adsetDBId: string): Promise<Set<s
     const response = await notion.databases.query({ database_id: adsetDBId, start_cursor: cursor });
     response.results.forEach((page: any) => {
       const name = page.properties['Name']?.title?.[0]?.plain_text;
-      const campaignIds = page.properties['Campaign']?.relation?.map((rel: any) => rel.id) || [];
-      campaignIds.forEach(campaignId => {
+      const campaignIds: string[] = page.properties['Campaign']?.relation?.map((rel: { id: string }) => rel.id) || [];
+      campaignIds.forEach((campaignId: string) => {
         if (name && campaignId) {
           pairs.add(`${name}:::${campaignId}`);
         }
