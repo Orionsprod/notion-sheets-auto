@@ -90,6 +90,14 @@ async function relateCampaignsToAccounts(sheetName: string, spreadsheetId: strin
       }
     });
     console.log(`Linked campaign '${campaignName}' to account '${accountName}'`);
+
+    await notion.pages.update({
+      page_id: accountId,
+      properties: {
+        'Campaigns': { relation: [{ id: campaignId }] },
+      }
+    });
+    console.log(`Linked account '${accountName}' to campaign '${campaignName}'`);
   }
 }
 
@@ -106,7 +114,7 @@ async function main() {
   const accountMap = await getNotionEntriesMap(process.env.NOTION_ACCOUNT_DB!, 'Name');
   await createNotionPages(accountValues, process.env.NOTION_ACCOUNT_DB!, 'Name', accountMap);
 
-  // Relate Campaigns to Accounts
+  // Relate Campaigns to Accounts (bidirectional)
   await relateCampaignsToAccounts(
     'ad-account_name',
     spreadsheetId,
