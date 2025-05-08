@@ -5,6 +5,12 @@ dotenv.config();
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
+const ICONS = {
+  campaign: 'https://em-content.zobj.net/source/apple/419/sparkle_2747-fe0f.png',
+  adset: 'https://em-content.zobj.net/source/apple/419/eight-spoked-asterisk_2733-fe0f.png',
+  account: 'https://em-content.zobj.net/source/apple/419/gem-stone_1f48e.png'
+};
+
 async function getSheetsClient() {
   const rawKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY!;
   const jsonCredentials = JSON.parse(Buffer.from(rawKey, 'base64').toString('utf8'));
@@ -38,11 +44,12 @@ async function getNotionEntriesMap(databaseId: string, propertyName: string): Pr
   return entries;
 }
 
-async function createNotionPages(values: string[], databaseId: string, prop: string, existing: Map<string, string>) {
+async function createNotionPages(values: string[], databaseId: string, prop: string, existing: Map<string, string>, iconUrl: string) {
   for (const value of values) {
     if (!existing.has(value)) {
       const page = await notion.pages.create({
         parent: { database_id: databaseId },
+        icon: { type: 'external', external: { url: iconUrl } },
         properties: {
           [prop]: { title: [{ text: { content: value } }] }
         }
@@ -86,6 +93,7 @@ async function createAdsetPerCampaign(sheetName: string, spreadsheetId: string, 
 
     await notion.pages.create({
       parent: { database_id: adsetDBId },
+      icon: { type: 'external', external: { url: ICONS.adset } },
       properties: {
         'Name': { title: [{ text: { content: adsetName } }] },
         'Campaign': { relation: [{ id: campaignId }] },
@@ -137,12 +145,12 @@ async function main() {
   // Sync Campaigns
   const campaignValues = (await getColumnData('ad-account/insights/unique_campaigns', spreadsheetId, 'A:A')).flat();
   const campaignMap = await getNotionEntriesMap(process.env.NOTION_CAMPAIGN_DB!, 'Name');
-  await createNotionPages(campaignValues, process.env.NOTION_CAMPAIGN_DB!, 'Name', campaignMap);
+  await createNotionPages(campaignValues, process.env.NOTION_CAMPAIGN_DB!, 'Name', campaignMap, ICONS.campaign);
 
   // Sync Accounts
   const accountValues = (await getColumnData('ad-account_name', spreadsheetId, 'D:D')).flat();
   const accountMap = await getNotionEntriesMap(process.env.NOTION_ACCOUNT_DB!, 'Name');
-  await createNotionPages(accountValues, process.env.NOTION_ACCOUNT_DB!, 'Name', accountMap);
+  await createNotionPages(accountValues, process.env.NOTION_ACCOUNT_DB!, 'Name', accountMap, ICONS.account);
 
   // Relate Campaigns to Accounts (bidirectional), using correct sheet
   await relateCampaignsToAccounts(
