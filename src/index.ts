@@ -105,7 +105,9 @@ async function relateCampaignsToAccounts(sheetName: string, spreadsheetId: strin
     console.log(`Linked campaign '${campaignName}' to account '${accountName}'`);
 
     // Link account -> campaigns (append)
-    const accountPage = await notion.pages.retrieve({ page_id: accountId }) as any;
+    const accountPage = await notion.pages.retrieve({ page_id: accountId });
+    if (!('properties' in accountPage)) continue;
+
     const currentCampaigns = accountPage.properties['Campaigns']?.relation?.map((r: any) => r.id) || [];
 
     if (!currentCampaigns.includes(campaignId)) {
